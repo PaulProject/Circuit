@@ -15,7 +15,7 @@ android {
     defaultConfig {
         applicationId = "com.example.circuit"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
@@ -51,6 +51,10 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
@@ -95,9 +99,18 @@ dependencies {
     /*store*/
     implementation(libs.store4)
 
+    testImplementation(libs.mockk)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.circuit.test)
+    testImplementation(libs.kluent.android)
+
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
+
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.testing.espresso.core)
 }
 
 kapt {

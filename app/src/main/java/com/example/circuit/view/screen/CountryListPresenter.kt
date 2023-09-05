@@ -11,12 +11,12 @@ import com.example.circuit.business.usecase.IGetCountryListUseCase
 import com.example.circuit.business.usecase.IUpdateCountryListUseCase
 import com.example.circuit.data.response.CountryResponse
 import com.example.circuit.extension.RequestAction
-import com.example.circuit.extension.requestFlow
+import com.example.circuit.extension.subscribe
 import com.example.circuit.view.converter.ICountryListConverter
 import com.slack.circuit.runtime.CircuitContext
 import com.slack.circuit.runtime.Navigator
-import com.slack.circuit.runtime.Screen
 import com.slack.circuit.runtime.presenter.Presenter
+import com.slack.circuit.runtime.screen.Screen
 import javax.inject.Inject
 
 class CountryListPresenterFactory @Inject constructor(
@@ -42,7 +42,7 @@ class CountryListPresenterFactory @Inject constructor(
     }
 }
 
-private class CountryListPresenter(
+internal class CountryListPresenter(
     private val getCountryList: IGetCountryListUseCase,
     private val updateCountryList: IUpdateCountryListUseCase,
     private val countryListConverter: ICountryListConverter
@@ -58,38 +58,37 @@ private class CountryListPresenter(
                 runCatching { updateCountryList() }
             }
         }
-        val response by produceState<RequestAction<List<CountryResponse>?>>(
+        val response by produceState<RequestAction<List<CountryResponse>>>(
             initialValue = RequestAction.Progress,
-            key1 = getCountryList,
+            key1 = Unit,
         ) {
-            requestFlow { getCountryList() }.collect { value = it }
+            subscribe { getCountryList() }.collect { value = it }
         }
         return when (val result = response) {
             is RequestAction.Data -> {
-                if (result.data != null) {
-                    CountryListScreen.CountryListState.Success(
-                        items = countryListConverter.convert(result.data),
-                        nameOfDialog = nameOfDialog,
-                    ) { event ->
-                        when (event) {
-                            is CountryListScreen.Event.CountryClick -> nameOfDialog = event.name
-                            is CountryListScreen.Event.DismissCountry -> nameOfDialog = null
-                            else -> Unit
-                        }
+                CountryListScreen.CountryListState.Success(
+                    items = countryListConverter.convert(result.data),
+                    nameOfDialog = nameOfDialog,
+                ) { event ->
+                    when (event) {
+                        is CountryListScreen.Event.CountryClick -> nameOfDialog = event.name
+                        is CountryListScreen.Event.DismissCountry -> nameOfDialog = null
+                        else -> Unit
                     }
-                } else {
-                    CountryListScreen.CountryListState.Loading
                 }
             }
 
-            is RequestAction.Error -> CountryListScreen.CountryListState.Error {
-                when (it) {
-                    is CountryListScreen.Event.Reload -> isRefresh = true
-                    else -> Unit
+            is RequestAction.Error -> {
+                CountryListScreen.CountryListState.Error {
+                    when (it) {
+                        is CountryListScreen.Event.Reload -> isRefresh = true
+                        else -> Unit
+                    }
                 }
             }
 
             is RequestAction.Progress -> CountryListScreen.CountryListState.Loading
+            RequestAction.Empty -> CountryListScreen.CountryListState.Loading
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.circuit.data.repository
 
+import androidx.annotation.VisibleForTesting
 import com.dropbox.android.external.store4.Fetcher
 import com.dropbox.android.external.store4.StoreBuilder
 import com.dropbox.android.external.store4.StoreRequest
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 interface ICountryRepository {
-    suspend fun getCountryList(): Flow<List<CountryResponse>?>
+    suspend fun getCountryList(): Flow<StoreResponse<List<CountryResponse>>>
     suspend fun updateCountryList()
 }
 
@@ -24,7 +25,8 @@ internal class CountryRepository @Inject constructor(
     private val dispatcherProvider: ICoroutineDispatcherProvider,
 ): ICountryRepository {
 
-    private val countryListStore by lazy {
+    @VisibleForTesting
+    val countryListStore by lazy {
         StoreBuilder
             .from<Unit, List<CountryResponse>>(fetcher = Fetcher.of { fetchCountryList() })
             .scope(dispatcherProvider.sessionScope)
@@ -34,18 +36,13 @@ internal class CountryRepository @Inject constructor(
     private suspend fun fetchCountryList(): List<CountryResponse> =
         service.getCountryList()
 
-    override suspend fun getCountryList(): Flow<List<CountryResponse>> {
+    override suspend fun getCountryList(): Flow<StoreResponse<List<CountryResponse>>> {
         val request = StoreRequest.cached(Unit, refresh = true)
         return countryListStore.stream(request)
-            .filterDataOrError()
-            .map { storeResponse -> storeResponse.requireData() }
     }
 
     override suspend fun updateCountryList() {
         countryListStore.fresh(Unit)
     }
-
-    private fun <Output : Any> Flow<StoreResponse<Output>>.filterDataOrError(): Flow<StoreResponse<Output>> =
-        filterNot { it is StoreResponse.Loading || it is StoreResponse.NoNewData }
 
 }
